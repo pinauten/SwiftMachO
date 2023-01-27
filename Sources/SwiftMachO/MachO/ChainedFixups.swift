@@ -23,8 +23,8 @@ open class ChainedFixups {
     
     private var machO: MachO
     
-    public var highestOrdinal: UInt16? {
-        var highest: UInt16 = 0
+    public var highestOrdinal: UInt32? {
+        var highest: UInt32 = 0
         
         do {
             try forEachFixup({ (loc, vAddr, target) in
@@ -208,7 +208,15 @@ open class ChainedFixups {
         }
         
         public func forEachFixup(_ callback: ChainCallback) throws {
-            guard pointerFormat == 1 else {
+            var bindsAre24Bit = false
+            switch pointerFormat {
+            case 1:
+                break
+                
+            case 12:
+                bindsAre24Bit = true
+                
+            default:
                 throw ChainedFixupsError.unsupportedPointerFormat
             }
             
@@ -226,7 +234,7 @@ open class ChainedFixups {
                     let next = (content >> 51) & 0x7FF
                     
                     let loc: UInt64 = segOffset + UInt64(off) + UInt64(curOff)
-                    try callback(loc, ChainTarget(rawValue: content))
+                    try callback(loc, ChainTarget(rawValue: content, bindsAre24Bit: bindsAre24Bit))
                     
                     if next == 0 {
                         break
@@ -237,7 +245,7 @@ open class ChainedFixups {
             }
         }
         
-        public enum ChainTarget: RawRepresentable {
+        public enum ChainTarget {
             public enum PACKey: UInt8 {
                 case IA = 0
                 case IB = 1
@@ -282,7 +290,7 @@ open class ChainedFixups {
                 }
             }
             
-            public init(rawValue: UInt64) {
+            public init(rawValue: UInt64, bindsAre24Bit: Bool) {
                 let type = rawValue >> 62
                 switch type {
                     case 0:
@@ -292,7 +300,8 @@ open class ChainedFixups {
                         self = .rebase(target: target, high8: high8, next: next)
                         
                     case 1:
-                        let ordinal = UInt16(rawValue & 0xFFFF)
+                        let ordinalMask: UInt64 = bindsAre24Bit ? 0xFFFFFF : 0xFFFF
+                        let ordinal = UInt32(rawValue & ordinalMask)
                         let addend = UInt32((rawValue >> 32) & 0x7FFFF)
                         let next = UInt16((rawValue >> 51) & 0x7FF)
                         self = .bind(ordinal: ordinal, addend: addend, next: next)
@@ -306,7 +315,8 @@ open class ChainedFixups {
                         self = .authRebase(target: target, diversity: diversity, addrDiv: addrDiv, key: key, next: next)
                         
                     case 3:
-                        let ordinal = UInt16(rawValue & 0xFFFF)
+                        let ordinalMask: UInt64 = bindsAre24Bit ? 0xFFFFFF : 0xFFFF
+                        let ordinal = UInt32(rawValue & ordinalMask)
                         let diversity = UInt16((rawValue >> 32) & 0xFFFF)
                         let addrDiv = ((rawValue >> 48) & 1) == 1
                         let key = PACKey(rawValue: UInt8((rawValue >> 49) & 0x3))!
@@ -319,9 +329,9 @@ open class ChainedFixups {
             }
             
             case authRebase(target: UInt32, diversity: UInt16, addrDiv: Bool, key: PACKey, next: UInt16)
-            case authBind(ordinal: UInt16, diversity: UInt16, addrDiv: Bool, key: PACKey, next: UInt16)
+            case authBind(ordinal: UInt32, diversity: UInt16, addrDiv: Bool, key: PACKey, next: UInt16)
             case rebase(target: UInt64, high8: UInt8, next: UInt16)
-            case bind(ordinal: UInt16, addend: UInt32, next: UInt16)
+            case bind(ordinal: UInt32, addend: UInt32, next: UInt16)
         }
     }
 }
