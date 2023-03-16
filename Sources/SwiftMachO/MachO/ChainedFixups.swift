@@ -92,7 +92,7 @@ open class ChainedFixups {
             throw MachOError.BadFormat
         }
         
-        guard (importsOffset + importsCount * UInt32(importsSize)) < chainData.count else {
+        guard (importsOffset + importsCount * UInt32(importsSize)) < chainData.count || importsCount == 0 else {
             throw MachOError.BadFormat
         }
         
