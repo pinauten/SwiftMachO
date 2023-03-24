@@ -19,7 +19,8 @@ public enum LoadCommandType: Equatable {
         .DYLDInfo:      0x22,
         .DYLDInfoOnly:  0x80000022,
         .Main:          0x80000028,
-        .ChainedFixups: 0x80000034
+        .ChainedFixups: 0x80000034,
+        .FilesetEntry:  0x80000035
     ] as KeyValuePairs<LoadCommandType, UInt32>
     
     public var rawValue: UInt32 {
@@ -52,6 +53,7 @@ public enum LoadCommandType: Equatable {
     case DYLDInfoOnly
     case Main
     case ChainedFixups
+    case FilesetEntry
     
     case Unknown(UInt32)
 }

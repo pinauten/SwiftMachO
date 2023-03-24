@@ -68,6 +68,9 @@ open class OpaqueLoadCommand: LoadCommand {
             
         case .UnixThread:
             return try UnixThreadLoadCommand(fromData: data)
+            
+        case .FilesetEntry:
+            return try FilesetEntryLoadCommand(fromData: data)
         
         default:
             return try OpaqueLoadCommand(fromData: data)

@@ -9,15 +9,15 @@
 import Foundation
 
 open class MachO {
-    public var magic: MachOMagic
-    public var cpuType: UInt32
-    public var cpuSubType: UInt32
-    public var filetype: MachOFiletype
-    public var flags: MachOFlags
+    public let magic: MachOMagic
+    public let cpuType: UInt32
+    public let cpuSubType: UInt32
+    public let filetype: MachOFiletype
+    public let flags: MachOFlags
     
-    public var cmds: [LoadCommand] = []
+    public let cmds: [LoadCommand]
     
-    public var uuid: uuid_t? {
+    public lazy var uuid: uuid_t? = {
         for cmd in cmds {
             if let uuidCmd = cmd as? UUIDLoadCommand {
                 return uuidCmd.uuid
@@ -25,9 +25,15 @@ open class MachO {
         }
         
         return nil
-    }
+    }()
     
-    public private(set) var data: Data
+    public lazy var filesetEntries: [FilesetEntryLoadCommand] = {
+        cmds.compactMap {
+            $0 as? FilesetEntryLoadCommand
+        }
+    }()
+    
+    public let data: Data
     
     public init(_ fromData: Data) throws {
         data = fromData
@@ -83,12 +89,15 @@ open class MachO {
         }
         
         var cmdsData = data.subdata(in: 0x20..<(0x20 + Int(cmds_size)))
+        var cmds: [LoadCommand] = []
         for _ in 0..<ncmds {
             let parsed = try OpaqueLoadCommand.parse(data: cmdsData)
             cmds.append(parsed)
             
             cmdsData = cmdsData.tryAdvance(by: Int(parsed.cmdSize))
         }
+        
+        self.cmds = cmds
     }
     
     public convenience init(fromData: Data, okToLoadFAT: Bool = true) throws {
